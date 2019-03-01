@@ -174,6 +174,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         super(VideoPlayerValue(duration: null));
 
   int _textureId;
+  final StreamController<Map<dynamic, dynamic>> _eventSink =
+      StreamController<Map<dynamic, dynamic>>.broadcast();
   final String dataSource;
 
   /// Describes the type of data source this [VideoPlayerController]
@@ -189,6 +191,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   @visibleForTesting
   int get textureId => _textureId;
+
+  Stream<Map<dynamic, dynamic>> get events => _eventSink.stream;
 
   Future<void> initialize() async {
     _lifeCycleObserver = _VideoAppLifeCycleObserver(this);
@@ -229,17 +233,20 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
     void eventListener(dynamic event) {
       final Map<dynamic, dynamic> map = event;
+      _eventSink.add(map);
       switch (map['event']) {
         case 'initialized':
-          value = value.copyWith(
-            duration: Duration(milliseconds: map['duration']),
-            size: Size(map['width']?.toDouble() ?? 0.0,
-                map['height']?.toDouble() ?? 0.0),
-          );
-          initializingCompleter.complete(null);
-          _applyLooping();
-          _applyVolume();
-          _applyPlayPause();
+          if (!initializingCompleter.isCompleted) {
+            value = value.copyWith(
+              duration: Duration(milliseconds: map['duration']),
+              size: Size(map['width']?.toDouble() ?? 0.0,
+                  map['height']?.toDouble() ?? 0.0),
+            );
+            initializingCompleter.complete(null);
+            _applyLooping();
+            _applyVolume();
+            _applyPlayPause();
+          }
           break;
         case 'completed':
           value = value.copyWith(isPlaying: false);
@@ -295,6 +302,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       _lifeCycleObserver.dispose();
     }
     _isDisposed = true;
+    _eventSink.close();
     super.dispose();
   }
 

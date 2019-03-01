@@ -37,6 +37,9 @@ class FakeController extends ValueNotifier<VideoPlayerValue>
   Future<void> play() async {}
   @override
   Future<void> setLooping(bool looping) async {}
+
+  @override
+  Stream<Map> get events => StreamController<Map>().stream;
 }
 
 void main() {
